@@ -126,14 +126,18 @@ module.exports = class Dispatcher
   executeBeforeAction: (controller, route, params, options) ->
     before = controller.beforeAction
 
+    resetNextRoutes = =>
+      @nextPreviousRoute = @nextCurrentRoute = null
+
     executeAction = =>
+      return resetNextRoutes() if controller.disposed
       if controller.redirected or @currentRoute and route is @currentRoute
-        @nextPreviousRoute = @nextCurrentRoute = null
+        resetNextRoutes()
         controller.dispose()
         return
       @previousRoute = @nextPreviousRoute
       @currentRoute = @nextCurrentRoute
-      @nextPreviousRoute = @nextCurrentRoute = null
+      resetNextRoutes()
       @executeAction controller, route, params, options
 
     unless before
@@ -148,7 +152,7 @@ module.exports = class Dispatcher
     # Execute action in controller context.
     promise = controller.beforeAction params, route, options
     if promise and promise.then
-      promise.then executeAction
+      promise.then executeAction, -> controller.dispose()
     else
       executeAction()
 
